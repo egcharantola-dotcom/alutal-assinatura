@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Alutal RATE — Assinatura em Campo</title>
+<style>
+  :root{ --navy:#0e2a47; --navy2:#123a63; --orange:#FF6A00; --orange2:#ff8534; --bg:#f3f6f9; --line:#e2e8ee; --muted:#6b7a8d; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Segoe UI, Arial, sans-serif;background:var(--bg);color:#1a2433;padding-bottom:40px}
+  .top{background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 100%);color:#fff;padding:18px 16px;text-align:center}
+  .top h1{font-size:16px;margin:0}
+  .top p{font-size:11.5px;color:#c9d6e3;margin:4px 0 0}
+  .wrap{max-width:520px;margin:0 auto;padding:16px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+  .card h2{font-size:13.5px;color:var(--navy);margin:0 0 10px}
+  label{font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px}
+  input[type=text]{width:100%;padding:12px 10px;border:1px solid var(--line);border-radius:8px;font-size:15px;margin-bottom:12px}
+  .btn{background:var(--orange);color:#fff;border:none;border-radius:8px;padding:13px 16px;font-size:14.5px;font-weight:600;cursor:pointer;width:100%}
+  .btn:active{background:var(--orange2)}
+  .btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--line);font-weight:500;font-size:13px;padding:9px}
+  .sig-box{border:2px dashed var(--line);border-radius:10px;overflow:hidden;background:#fafcfe;touch-action:none}
+  canvas{width:100%;display:block;touch-action:none}
+  .note{font-size:11px;color:var(--muted);background:#f3f7fb;border-radius:8px;padding:10px;margin-bottom:12px;line-height:1.5}
+  .step{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .step .n{background:var(--navy);color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex:none}
+  #status{font-size:12.5px;padding:10px;border-radius:8px;margin-bottom:12px;display:none}
+  #status.ok{background:#eef7f0;color:#1e5c34;display:block}
+  #status.err{background:#fdeeee;color:#8a2323;display:block}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>📱 Alutal RATE — Assinatura em Campo</h1>
+  <p>Colete a assinatura do técnico e do cliente, direto no celular</p>
+</div>
+
+<div class="wrap">
+
+  <div class="note">
+    <div class="step"><span class="n">1</span> Preencha a referência (WO) exatamente como está no relatório salvo no computador</div>
+    <div class="step"><span class="n">2</span> Colete as duas assinaturas</div>
+    <div class="step"><span class="n">3</span> Toque em "Salvar" e escolha <b>salvar na pasta do OneDrive</b> da empresa</div>
+  </div>
+
+  <div id="status"></div>
+
+  <div class="card">
+    <h2>Identificação</h2>
+    <label>Referência Alutal (WO)</label>
+    <input type="text" id="campoWO" placeholder="ex: WO124877" autocapitalize="characters">
+    <label>Seu nome (técnico)</label>
+    <input type="text" id="campoTecnico" placeholder="Nome completo">
+  </div>
+
+  <div class="card">
+    <h2>✍️ Assinatura do Técnico</h2>
+    <div class="sig-box"><canvas id="sigTecnico" width="640" height="220"></canvas></div>
+    <button class="btn ghost" style="margin-top:8px" onclick="limparSig('sigTecnico')">Limpar</button>
+  </div>
+
+  <div class="card">
+    <h2>✍️ Assinatura do Cliente</h2>
+    <div class="sig-box"><canvas id="sigCliente" width="640" height="220"></canvas></div>
+    <button class="btn ghost" style="margin-top:8px" onclick="limparSig('sigCliente')">Limpar</button>
+  </div>
+
+  <button class="btn" onclick="salvarPacote()">💾 Salvar assinaturas</button>
+
+</div>
+
+<script>
+const sigData = { sigTecnico: null, sigCliente: null };
+
+function setupCanvas(id){
+  const canvas = document.getElementById(id);
+  const ctx = canvas.getContext('2d');
+  ctx.lineWidth = 2.6; ctx.lineCap = 'round'; ctx.strokeStyle = '#0e2a47';
+  let drawing = false, last = null;
+
+  function pos(e){
+    const rect = canvas.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    const cx = t.clientX - rect.left, cy = t.clientY - rect.top;
+    return { x: cx * (canvas.width / rect.width), y: cy * (canvas.height / rect.height) };
+  }
+  function start(e){ drawing = true; last = pos(e); e.preventDefault(); }
+  function move(e){
+    if(!drawing) return;
+    const p = pos(e);
+    ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+    last = p;
+    sigData[id] = canvas.toDataURL('image/png');
+    e.preventDefault();
+  }
+  function end(){ drawing = false; }
+
+  canvas.addEventListener('touchstart', start, {passive:false});
+  canvas.addEventListener('touchmove', move, {passive:false});
+  canvas.addEventListener('touchend', end);
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+}
+setupCanvas('sigTecnico');
+setupCanvas('sigCliente');
+
+function limparSig(id){
+  const canvas = document.getElementById(id);
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+  sigData[id] = null;
+}
+
+function mostrarStatus(msg, tipo){
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = tipo;
+}
+
+async function salvarPacote(){
+  const wo = document.getElementById('campoWO').value.trim();
+  const tecnico = document.getElementById('campoTecnico').value.trim();
+  if(!wo){ mostrarStatus('⚠️ Preencha a Referência (WO).', 'err'); return; }
+  if(!tecnico){ mostrarStatus('⚠️ Preencha seu nome.', 'err'); return; }
+  if(!sigData.sigTecnico || !sigData.sigCliente){ mostrarStatus('⚠️ Colete as duas assinaturas antes de salvar.', 'err'); return; }
+
+  const pacote = {
+    tipo: 'alutal-assinatura-v1',
+    wo, tecnico,
+    sigTecnico: sigData.sigTecnico,
+    sigCliente: sigData.sigCliente,
+    timestamp: new Date().toLocaleString('pt-BR'),
+  };
+  const nomeArquivo = 'Assinatura_' + wo.replace(/\s+/g,'_') + '_' + Date.now() + '.json';
+  const blob = new Blob([JSON.stringify(pacote)], {type:'application/json'});
+  const file = new File([blob], nomeArquivo, {type:'application/json'});
+
+  // No celular, tenta abrir direto o menu "Compartilhar/Salvar em" nativo
+  // (assim dá pra escolher "Salvar no OneDrive" com poucos toques). Se o
+  // navegador não suportar isso, cai pro download normal.
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{
+      await navigator.share({ files:[file], title:'Assinatura Alutal RATE', text:'Pacote de assinatura — '+wo });
+      mostrarStatus('✅ Escolha "OneDrive" (ou a pasta compartilhada da Alutal) na tela que abriu, pra salvar. Pronto!', 'ok');
+      return;
+    }catch(e){
+      // usuário cancelou o compartilhamento — não é erro, só não faz nada
+      if(e && e.name === 'AbortError') return;
+    }
+  }
+
+  // Fallback: download normal
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nomeArquivo;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  mostrarStatus('✅ Arquivo baixado (' + nomeArquivo + '). Abra o app do OneDrive e mova esse arquivo pra pasta compartilhada da Alutal.', 'ok');
+}
+</script>
+</body>
+</html>
