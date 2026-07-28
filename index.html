@@ -39,17 +39,24 @@
 <div class="wrap">
 
   <div class="note">
-    <div class="step"><span class="n">1</span> Preencha a referência (WO) exatamente como está no relatório salvo no computador</div>
+    <div class="step"><span class="n">1</span> Confira os dados abaixo (vieram do QR Code do chamado)</div>
     <div class="step"><span class="n">2</span> Colete as duas assinaturas</div>
     <div class="step"><span class="n">3</span> Toque em "Salvar" e escolha <b>salvar na pasta do OneDrive</b> da empresa</div>
   </div>
 
   <div id="status"></div>
 
-  <div class="card">
-    <h2>Identificação</h2>
+  <div class="card" id="cardIdentificacao">
+    <h2>Identificação do Chamado</h2>
+    <div id="resumoChamado" style="display:none;background:#f3f7fb;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;line-height:1.7"></div>
+    <label>Código do Chamado</label>
+    <input type="text" id="campoChamado" placeholder="ex: CH-260727-A1B2">
     <label>Referência Alutal (WO)</label>
     <input type="text" id="campoWO" placeholder="ex: WO124877" autocapitalize="characters">
+    <label>Cliente</label>
+    <input type="text" id="campoCliente" placeholder="Nome do cliente">
+    <label>Contato do cliente</label>
+    <input type="text" id="campoContato" placeholder="Nome de quem está assinando pelo cliente">
     <label>Seu nome (técnico)</label>
     <input type="text" id="campoTecnico" placeholder="Nome completo">
   </div>
@@ -71,6 +78,36 @@
 </div>
 
 <script>
+// Lê os dados que vieram pela URL do QR Code (gerado na tela do chamado, no
+// sistema desktop) e já preenche tudo sozinho — o técnico só confere e
+// corrige se precisar, em vez de digitar tudo de novo no celular.
+(function preencherDaURL(){
+  const params = new URLSearchParams(window.location.search);
+  const chamado = params.get('chamado') || '';
+  const wo = params.get('wo') || '';
+  const cliente = params.get('cliente') || '';
+  const contato = params.get('contato') || '';
+  const tecnico = params.get('tecnico') || '';
+
+  if(chamado) document.getElementById('campoChamado').value = chamado;
+  if(wo) document.getElementById('campoWO').value = wo;
+  if(cliente) document.getElementById('campoCliente').value = cliente;
+  if(contato) document.getElementById('campoContato').value = contato;
+  if(tecnico) document.getElementById('campoTecnico').value = tecnico;
+
+  if(chamado || cliente){
+    const resumo = document.getElementById('resumoChamado');
+    resumo.style.display = 'block';
+    resumo.innerHTML = [
+      chamado ? `📞 <b>Chamado:</b> #${chamado}` : '',
+      cliente ? `🏢 <b>Cliente:</b> ${cliente}` : '',
+      contato ? `👤 <b>Contato:</b> ${contato}` : '',
+      tecnico ? `🔧 <b>Técnico:</b> ${tecnico}` : '',
+      wo ? `📋 <b>WO:</b> ${wo}` : '',
+    ].filter(Boolean).join('<br>');
+  }
+})();
+
 const sigData = { sigTecnico: null, sigCliente: null };
 
 function setupCanvas(id){
@@ -119,20 +156,23 @@ function mostrarStatus(msg, tipo){
 }
 
 async function salvarPacote(){
+  const chamado = document.getElementById('campoChamado').value.trim();
   const wo = document.getElementById('campoWO').value.trim();
+  const cliente = document.getElementById('campoCliente').value.trim();
+  const contato = document.getElementById('campoContato').value.trim();
   const tecnico = document.getElementById('campoTecnico').value.trim();
-  if(!wo){ mostrarStatus('⚠️ Preencha a Referência (WO).', 'err'); return; }
+  if(!wo && !chamado){ mostrarStatus('⚠️ Preencha ao menos o Código do Chamado ou a Referência (WO).', 'err'); return; }
   if(!tecnico){ mostrarStatus('⚠️ Preencha seu nome.', 'err'); return; }
   if(!sigData.sigTecnico || !sigData.sigCliente){ mostrarStatus('⚠️ Colete as duas assinaturas antes de salvar.', 'err'); return; }
 
   const pacote = {
     tipo: 'alutal-assinatura-v1',
-    wo, tecnico,
+    chamado, wo, cliente, contato, tecnico,
     sigTecnico: sigData.sigTecnico,
     sigCliente: sigData.sigCliente,
     timestamp: new Date().toLocaleString('pt-BR'),
   };
-  const nomeArquivo = 'Assinatura_' + wo.replace(/\s+/g,'_') + '_' + Date.now() + '.json';
+  const nomeArquivo = 'Assinatura_' + (chamado||wo).replace(/\s+/g,'_') + '_' + Date.now() + '.json';
   const blob = new Blob([JSON.stringify(pacote)], {type:'application/json'});
   const file = new File([blob], nomeArquivo, {type:'application/json'});
 
