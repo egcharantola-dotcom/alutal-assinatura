@@ -41,7 +41,7 @@
   <div class="note">
     <div class="step"><span class="n">1</span> Confira os dados abaixo (vieram do QR Code do chamado)</div>
     <div class="step"><span class="n">2</span> Colete as duas assinaturas</div>
-    <div class="step"><span class="n">3</span> Toque em "Salvar" e escolha <b>salvar na pasta do OneDrive</b> da empresa</div>
+    <div class="step"><span class="n">3</span> Toque em "Salvar", escolha <b>"Mail"</b> na tela que abrir e envie — o resto é automático</div>
   </div>
 
   <div id="status"></div>
@@ -74,6 +74,18 @@
   </div>
 
   <button class="btn" onclick="salvarPacote()">💾 Salvar assinaturas</button>
+
+  <div class="card" id="painelProximosPassos" style="display:none;border:2px solid #0e2a47">
+    <h2>📤 Últimos passos pra concluir</h2>
+    <div class="note">
+      <div class="step"><span class="n">1</span> O arquivo <b id="nomeArquivoGerado"></b> já foi baixado no seu celular</div>
+      <div class="step"><span class="n">2</span> Toque no botão abaixo pra abrir seu app de e-mail já com destinatário e assunto prontos</div>
+      <div class="step"><span class="n">3</span> No e-mail, toque em <b>anexar arquivo</b> (📎) e escolha o arquivo acima — geralmente está na pasta <b>"Downloads"</b> do celular</div>
+      <div class="step"><span class="n">4</span> Toque em <b>Enviar</b></div>
+    </div>
+    <a id="linkAbrirEmail" href="#" class="btn" style="display:block;text-align:center;text-decoration:none;margin-top:10px">✉️ Abrir e-mail (já preenchido)</a>
+    <button class="btn ghost" style="margin-top:8px" onclick="copiarTexto('ernani.charantola@alutal.com.br', this)">📋 Copiar e-mail de destino</button>
+  </div>
 
 </div>
 
@@ -154,6 +166,19 @@ function mostrarStatus(msg, tipo){
   el.textContent = msg;
   el.className = tipo;
 }
+function copiarTexto(texto, elBotao){
+  navigator.clipboard.writeText(texto).then(()=>{
+    const original = elBotao.textContent;
+    elBotao.textContent = '✅ Copiado!';
+    setTimeout(()=>{ elBotao.textContent = original; }, 1500);
+  });
+}
+
+// E-mail que recebe as assinaturas — o fluxo do Power Automate (gatilho
+// "Quando um novo e-mail chegar") fica escutando essa caixa e salva o
+// anexo sozinho na pasta compartilhada, sem o técnico precisar mexer em nada.
+const EMAIL_ASSINATURAS = 'ernani.charantola@alutal.com.br';
+const ASSUNTO_PADRAO = 'AlutalAssinatura';
 
 async function salvarPacote(){
   const chamado = document.getElementById('campoChamado').value.trim();
@@ -172,31 +197,32 @@ async function salvarPacote(){
     sigCliente: sigData.sigCliente,
     timestamp: new Date().toLocaleString('pt-BR'),
   };
-  const nomeArquivo = 'Assinatura_' + (chamado||wo).replace(/\s+/g,'_') + '_' + Date.now() + '.json';
+  const identificador = (chamado||wo).replace(/\s+/g,'_');
+  const nomeArquivo = 'Assinatura_' + identificador + '_' + Date.now() + '.json';
   const blob = new Blob([JSON.stringify(pacote)], {type:'application/json'});
-  const file = new File([blob], nomeArquivo, {type:'application/json'});
 
-  // No celular, tenta abrir direto o menu "Compartilhar/Salvar em" nativo
-  // (assim dá pra escolher "Salvar no OneDrive" com poucos toques). Se o
-  // navegador não suportar isso, cai pro download normal.
-  if(navigator.canShare && navigator.canShare({files:[file]})){
-    try{
-      await navigator.share({ files:[file], title:'Assinatura Alutal RATE', text:'Pacote de assinatura — '+wo });
-      mostrarStatus('✅ Escolha "OneDrive" (ou a pasta compartilhada da Alutal) na tela que abriu, pra salvar. Pronto!', 'ok');
-      return;
-    }catch(e){
-      // usuário cancelou o compartilhamento — não é erro, só não faz nada
-      if(e && e.name === 'AbortError') return;
-    }
-  }
+  const assunto = ASSUNTO_PADRAO + ' — ' + identificador;
+  const corpoEmail = `Pacote de assinatura em anexo.\n\nChamado: ${chamado||'-'}\nWO: ${wo||'-'}\nCliente: ${cliente||'-'}\nContato: ${contato||'-'}\nTécnico: ${tecnico}\n\n(Este e-mail é processado automaticamente — não precisa responder.)`;
 
-  // Fallback: download normal
+  // O compartilhamento nativo com arquivo anexado (Web Share API) não
+  // funciona de forma confiável em todo celular/app de e-mail — por isso
+  // o caminho principal agora é baixar o arquivo e mostrar um passo a
+  // passo fixo na tela, que funciona em qualquer aparelho.
+  baixarArquivo(blob, nomeArquivo);
+
+  const mailtoUrl = `mailto:${EMAIL_ASSINATURAS}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpoEmail)}`;
+  document.getElementById('painelProximosPassos').style.display = 'block';
+  document.getElementById('nomeArquivoGerado').textContent = nomeArquivo;
+  document.getElementById('linkAbrirEmail').href = mailtoUrl;
+  document.getElementById('painelProximosPassos').scrollIntoView({behavior:'smooth'});
+  mostrarStatus('✅ Arquivo gerado! Siga o passo a passo abaixo pra concluir o envio.', 'ok');
+}
+function baixarArquivo(blob, nomeArquivo){
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = nomeArquivo;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  mostrarStatus('✅ Arquivo baixado (' + nomeArquivo + '). Abra o app do OneDrive e mova esse arquivo pra pasta compartilhada da Alutal.', 'ok');
 }
 </script>
 </body>
