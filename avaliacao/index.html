@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Alutal — Pesquisa de Satisfação</title>
+<style>
+  :root{ --navy:#0e2a47; --navy2:#123a63; --orange:#FF6A00; --orange2:#ff8534; --bg:#f3f6f9; --line:#e2e8ee; --muted:#6b7a8d; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Segoe UI, Arial, sans-serif;background:var(--bg);color:#1a2433;padding-bottom:40px}
+  .top{background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 100%);color:#fff;padding:22px 16px;text-align:center}
+  .top h1{font-size:18px;margin:0}
+  .top p{font-size:12px;color:#c9d6e3;margin:6px 0 0}
+  .wrap{max-width:520px;margin:0 auto;padding:16px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+  .card h2{font-size:14.5px;color:var(--navy);margin:0 0 6px}
+  .resumo{background:#f3f7fb;border-radius:8px;padding:10px 12px;margin-bottom:16px;font-size:12.5px;line-height:1.7}
+  label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
+  textarea{width:100%;padding:12px 10px;border:1px solid var(--line);border-radius:8px;font-size:15px;font-family:inherit;min-height:90px;resize:vertical}
+  .btn{background:var(--orange);color:#fff;border:none;border-radius:8px;padding:14px 16px;font-size:15px;font-weight:600;cursor:pointer;width:100%;display:none}
+  .btn.show{display:block}
+  .btn:active{background:var(--orange2)}
+  .btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--line);font-weight:500;font-size:13px;padding:9px;display:block;margin-top:8px}
+  .estrelas{display:flex;justify-content:center;gap:10px;margin:18px 0 8px;font-size:0}
+  .estrela{font-size:46px;color:#dbe2e9;cursor:pointer;user-select:none;transition:color .15s, transform .1s}
+  .estrela.ativa{color:#FFB200}
+  .estrela:active{transform:scale(0.9)}
+  .rotulo-nota{text-align:center;font-size:13.5px;color:var(--muted);min-height:20px;margin-bottom:6px}
+  .note{font-size:11px;color:var(--muted);background:#f3f7fb;border-radius:8px;padding:10px;margin-bottom:12px;line-height:1.5}
+  .step{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .step .n{background:var(--navy);color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex:none}
+  #status{font-size:12.5px;padding:10px;border-radius:8px;margin-bottom:12px;display:none}
+  #status.ok{background:#eef7f0;color:#1e5c34;display:block}
+  #status.err{background:#fdeeee;color:#8a2323;display:block}
+  .tela-obrigado{display:none;text-align:center;padding:40px 20px}
+  .tela-obrigado.show{display:block}
+  .tela-obrigado .emoji{font-size:56px}
+  .tela-obrigado h2{color:var(--navy);font-size:20px;margin:12px 0 6px}
+  .tela-obrigado p{color:var(--muted);font-size:13.5px}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>⭐ Como foi o nosso atendimento?</h1>
+  <p>Sua opinião ajuda a Alutal a melhorar cada vez mais</p>
+</div>
+
+<div class="wrap">
+
+  <div id="telaPesquisa">
+    <div class="card">
+      <div id="resumoChamado" style="display:none" class="resumo"></div>
+
+      <label style="text-align:center;font-size:13px">Dê uma nota de 1 a 5 estrelas</label>
+      <div class="estrelas" id="estrelas">
+        <span class="estrela" data-v="1">★</span>
+        <span class="estrela" data-v="2">★</span>
+        <span class="estrela" data-v="3">★</span>
+        <span class="estrela" data-v="4">★</span>
+        <span class="estrela" data-v="5">★</span>
+      </div>
+      <div class="rotulo-nota" id="rotuloNota"></div>
+
+      <label style="margin-top:14px">Quer contar mais alguma coisa? (opcional)</label>
+      <textarea id="campoComentario" placeholder="Conte como foi sua experiência com o técnico e o atendimento..."></textarea>
+
+      <label style="margin-top:14px">Sugestões ou críticas? (opcional)</label>
+      <textarea id="campoSugestao" placeholder="Se tiver alguma sugestão de melhoria ou crítica, pode escrever aqui..."></textarea>
+    </div>
+
+    <div id="status"></div>
+
+    <button class="btn" id="btnEnviar" onclick="enviarAvaliacao()">Enviar avaliação</button>
+
+    <div class="note" style="margin-top:14px">
+      <div class="step"><span class="n">1</span> Escolha sua nota tocando nas estrelas</div>
+      <div class="step"><span class="n">2</span> Se quiser, escreva um comentário</div>
+      <div class="step"><span class="n">3</span> Toque em "Enviar avaliação" — pronto, é só isso!</div>
+    </div>
+  </div>
+
+  <div id="telaObrigado" class="tela-obrigado">
+    <div class="emoji">✅</div>
+    <h2>Avaliação enviada!</h2>
+    <p>Muito obrigado pelo seu tempo — sua opinião chega direto pra equipe da Alutal.</p>
+  </div>
+
+</div>
+
+<script>
+let notaEscolhida = 0;
+let dadosChamado = { chamado:'', cliente:'', tecnico:'' };
+
+const rotulos = { 1:'😞 Muito insatisfeito', 2:'😕 Insatisfeito', 3:'😐 Neutro', 4:'🙂 Satisfeito', 5:'🤩 Muito satisfeito' };
+
+(function preencherDaURL(){
+  const params = new URLSearchParams(window.location.search);
+  dadosChamado.chamado = params.get('chamado') || '';
+  dadosChamado.cliente = params.get('cliente') || '';
+  dadosChamado.tecnico = params.get('tecnico') || '';
+
+  if(dadosChamado.chamado || dadosChamado.cliente){
+    const resumo = document.getElementById('resumoChamado');
+    resumo.style.display = 'block';
+    resumo.innerHTML = [
+      dadosChamado.cliente ? `🏢 <b>Cliente:</b> ${dadosChamado.cliente}` : '',
+      dadosChamado.tecnico ? `🔧 <b>Técnico:</b> ${dadosChamado.tecnico}` : '',
+      dadosChamado.chamado ? `📞 <b>Chamado:</b> #${dadosChamado.chamado}` : '',
+    ].filter(Boolean).join('<br>');
+  }
+})();
+
+document.querySelectorAll('.estrela').forEach(el=>{
+  el.addEventListener('click', ()=>{
+    notaEscolhida = Number(el.dataset.v);
+    document.querySelectorAll('.estrela').forEach(e2=>{
+      e2.classList.toggle('ativa', Number(e2.dataset.v) <= notaEscolhida);
+    });
+    document.getElementById('rotuloNota').textContent = rotulos[notaEscolhida] || '';
+    document.getElementById('btnEnviar').classList.add('show');
+  });
+});
+
+function mostrarStatus(msg, tipo){
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = tipo;
+}
+
+// Chave de acesso do Web3Forms — pega a sua de graça em web3forms.com
+// (só digita um e-mail, sem precisar criar conta) e substitui aqui.
+const WEB3FORMS_ACCESS_KEY = '415142ff-8b7f-4a4a-af3e-6ff103ebb774';
+
+async function enviarAvaliacao(){
+  if(!notaEscolhida){ mostrarStatus('⚠️ Escolha uma nota de 1 a 5 estrelas antes de enviar.', 'err'); return; }
+  const comentario = document.getElementById('campoComentario').value.trim();
+  const sugestao = document.getElementById('campoSugestao').value.trim();
+  const identificador = (dadosChamado.chamado || 'avaliacao').replace(/\s+/g,'_');
+
+  const btn = document.getElementById('btnEnviar');
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+  mostrarStatus('', '');
+
+  try{
+    const resposta = await fetch('https://api.web3forms.com/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        access_key: WEB3FORMS_ACCESS_KEY,
+        subject: 'AlutalAvaliacao — ' + identificador,
+        chamado: dadosChamado.chamado,
+        cliente: dadosChamado.cliente,
+        tecnico: dadosChamado.tecnico,
+        nota: notaEscolhida,
+        comentario: comentario || '(sem comentário)',
+        sugestao: sugestao || '(sem sugestão)',
+      }),
+    });
+    const resultado = await resposta.json();
+    if(!resultado.success){ throw new Error(resultado.message || 'Falha no envio'); }
+
+    document.getElementById('telaPesquisa').style.display = 'none';
+    document.getElementById('telaObrigado').classList.add('show');
+  }catch(e){
+    mostrarStatus('⚠️ Não foi possível enviar agora. Verifique sua internet e tente de novo. ('+e.message+')', 'err');
+    btn.disabled = false;
+    btn.textContent = 'Enviar avaliação';
+  }
+}
+</script>
+</body>
+</html>
